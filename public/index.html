@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Processor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Word Processor</h1>
+            <p>Create, edit, and manage your documents with ease</p>
+        </div>
+
+        <div class="toolbar">
+            <div class="file-section">
+                <input type="text" id="filename" class="file-input" placeholder="Enter filename (e.g., document.txt)" value="document.txt">
+                <button class="btn btn-primary" onclick="createNewFile()">📄 New</button>
+                <button class="btn btn-success" onclick="saveFile()">💾 Save</button>
+                <button class="btn btn-warning" onclick="loadFile()">📂 Load</button>
+                <button class="btn btn-info" onclick="listFiles()">📋 List Files</button>
+            </div>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="editor-container">
+            <textarea id="editor" class="editor" placeholder="Start typing your document here..."></textarea>
+        </div>
+
+        <div class="status">
+            <div class="word-count">
+                Words: <span id="wordCount">0</span> | Characters: <span id="charCount">0</span>
+            </div>
+            <div>
+                Last saved: <span id="lastSaved">Never</span>
+            </div>
+        </div>
+
+        <div id="fileList" class="file-list" style="display: none;">
+            <h3>📁 Saved Documents</h3>
+            <div id="fileItems"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
