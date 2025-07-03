@@ -1,5 +1,4 @@
-// File system simulation (in real app, this would connect to Node.js backend)
-let fileSystem = JSON.parse(localStorage.getItem('wordProcessorFiles')) || {};
+let fileSystem = {}; // Used only for local operations
 
 const editor = document.getElementById('editor');
 const filenameInput = document.getElementById('filename');
@@ -10,332 +9,193 @@ const lastSavedSpan = document.getElementById('lastSaved');
 const fileListDiv = document.getElementById('fileList');
 const fileItemsDiv = document.getElementById('fileItems');
 
-// Update word and character count
 editor.addEventListener('input', updateStats);
 
 function updateStats() {
-    const text = editor.value;
-    const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
-    const chars = text.length;
-    
-    wordCountSpan.textContent = words;
-    charCountSpan.textContent = chars;
+  const text = editor.value;
+  const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+  const chars = text.length;
+
+  wordCountSpan.textContent = words;
+  charCountSpan.textContent = chars;
 }
 
 function showMessage(text, type = 'success') {
-    messageDiv.textContent = text;
-    messageDiv.className = `message ${type}`;
-    messageDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        messageDiv.style.display = 'none';
-    }, 3000);
+  messageDiv.textContent = text;
+  messageDiv.className = `message ${type}`;
+  messageDiv.style.display = 'block';
+
+  setTimeout(() => {
+    messageDiv.style.display = 'none';
+  }, 3000);
 }
 
 function createNewFile() {
-    editor.value = '';
-    filenameInput.value = 'document.txt';
+  editor.value = '';
+  filenameInput.value = 'document.txt';
+  updateStats();
+  showMessage('New document created successfully!');
+}
+
+async function saveFile() {
+  const filename = filenameInput.value.trim();
+  const content = editor.value;
+
+  if (!filename) {
+    showMessage('Please enter a filename!', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch('http://localhost:3000/api/files/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, content })
+    });
+
+    const data = await response.json();
+    lastSavedSpan.textContent = new Date().toLocaleString();
+    showMessage(data.message || 'File saved!');
+  } catch (err) {
+    showMessage('Failed to save file!', 'error');
+  }
+}
+
+async function loadFile() {
+  const filename = filenameInput.value.trim();
+
+  if (!filename) {
+    showMessage('Please enter a filename to load!', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch(`http://localhost:3000/api/files/load/${filename}`);
+    if (!response.ok) throw new Error('Not found');
+
+    const data = await response.json();
+    editor.value = data.content;
     updateStats();
-    showMessage('New document created successfully!');
+    showMessage(`File "${filename}" loaded!`);
+  } catch {
+    showMessage(`File "${filename}" not found!`, 'error');
+  }
 }
 
-// File operations that would typically connect to Node.js server
-function saveFile() {
-    const filename = filenameInput.value.trim();
-    const content = editor.value;
-    
-    if (!filename) {
-        showMessage('Please enter a filename!', 'error');
-        return;
-    }
-    
-    // Simulate saving to file system
-    // In real application, this would make an API call to Node.js:
-    // fetch('/api/save', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ filename, content })
-    // });
-    
-    fileSystem[filename] = {
-        content: content,
-        lastModified: new Date().toLocaleString(),
-        size: content.length
-    };
-    
-    // Save to localStorage (simulating persistent storage)
-    localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
-    
+async function updateFile() {
+  const filename = filenameInput.value.trim();
+  const content = editor.value;
+
+  if (!filename) {
+    showMessage('Please enter a filename to update!', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch('http://localhost:3000/api/files/update', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, content })
+    });
+
+    if (!response.ok) throw new Error();
+
+    const data = await response.json();
     lastSavedSpan.textContent = new Date().toLocaleString();
-    showMessage(`File "${filename}" saved successfully!`);
+    showMessage(data.message);
+  } catch {
+    showMessage(`File "${filename}" could not be updated!`, 'error');
+  }
 }
 
-function loadFile() {
-    const filename = filenameInput.value.trim();
-    
-    if (!filename) {
-        showMessage('Please enter a filename to load!', 'error');
-        return;
-    }
-    
-    // In real application, this would make an API call to Node.js:
-    // fetch(`/api/load/${filename}`)
-    //     .then(response => response.json())
-    //     .then(data => {
-    //         editor.value = data.content;
-    //         updateStats();
-    //     });
-    
-    if (fileSystem[filename]) {
-        editor.value = fileSystem[filename].content;
-        updateStats();
-        showMessage(`File "${filename}" loaded successfully!`);
-    } else {
-        showMessage(`File "${filename}" not found!`, 'error');
-    }
-}
+async function listFiles() {
+  try {
+    const response = await fetch('http://localhost:3000/api/files/list');
+    const data = await response.json();
 
-function updateFile() {
-    const filename = filenameInput.value.trim();
-    const content = editor.value;
-    
-    if (!filename) {
-        showMessage('Please enter a filename to update!', 'error');
-        return;
-    }
-    
-    if (!fileSystem[filename]) {
-        showMessage(`File "${filename}" doesn't exist! Use Save to create it.`, 'error');
-        return;
-    }
-    
-    // Update existing file
-    fileSystem[filename].content = content;
-    fileSystem[filename].lastModified = new Date().toLocaleString();
-    fileSystem[filename].size = content.length;
-    
-    localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
-    
-    lastSavedSpan.textContent = new Date().toLocaleString();
-    showMessage(`File "${filename}" updated successfully!`);
-}
-
-function listFiles() {
-    const files = Object.keys(fileSystem);
-    
+    const files = data.files;
     if (files.length === 0) {
-        fileItemsDiv.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No files found. Create and save a document first!</p>';
+      fileItemsDiv.innerHTML = '<p style="text-align:center; color: gray;">No files found.</p>';
     } else {
-        fileItemsDiv.innerHTML = files.map(filename => {
-            const file = fileSystem[filename];
-            return `
-                <div class="file-item">
-                    <div>
-                        <div class="file-name">${filename}</div>
-                        <small style="color: #6c757d;">
-                            ${file.size} characters • Modified: ${file.lastModified}
-                        </small>
-                    </div>
-                    <div class="file-actions">
-                        <button class="btn btn-primary btn-sm" onclick="loadSpecificFile('${filename}')">📂 Load</button>
-                        <button class="btn btn-info btn-sm" onclick="updateSpecificFile('${filename}')">✏️ Update</button>
-                        <button class="btn btn-warning btn-sm" onclick="deleteFile('${filename}')">🗑️ Delete</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+      fileItemsDiv.innerHTML = files.map(file => `
+        <div class="file-item">
+          <div>
+            <div class="file-name">${file}</div>
+          </div>
+          <div class="file-actions">
+            <button onclick="loadSpecificFile('${file}')" class="btn btn-primary btn-sm">📂 Load</button>
+            <button onclick="deleteFile('${file}')" class="btn btn-warning btn-sm">🗑️ Delete</button>
+            <button onclick="updateSpecificFile('${file}')" class="btn btn-success btn-sm">✏️ Update</button>
+          </div>
+        </div>
+      `).join('');
     }
-    
-    fileListDiv.style.display = fileListDiv.style.display === 'none' ? 'block' : 'none';
+
+    fileListDiv.style.display = 'block';
+  } catch {
+    showMessage('Failed to load file list', 'error');
+  }
 }
 
-function loadSpecificFile(filename) {
-    filenameInput.value = filename;
-    editor.value = fileSystem[filename].content;
-    updateStats();
-    showMessage(`File "${filename}" loaded successfully!`);
-    fileListDiv.style.display = 'none';
+async function updateSpecificFile(filename) {
+  filenameInput.value = filename;
+  await loadFile();
+  fileListDiv.style.display = 'none';
+  // Now user can edit and click "Update" to save changes
 }
 
-function updateSpecificFile(filename) {
-    filenameInput.value = filename;
-    editor.value = fileSystem[filename].content;
-    updateStats();
-    showMessage(`File "${filename}" loaded for editing. Make changes and save/update!`);
-    fileListDiv.style.display = 'none';
+async function loadSpecificFile(filename) {
+  filenameInput.value = filename;
+  await loadFile();
+  fileListDiv.style.display = 'none';
 }
 
-function deleteFile(filename) {
-    if (confirm(`Are you sure you want to delete "${filename}"?`)) {
-        delete fileSystem[filename];
-        localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
-        showMessage(`File "${filename}" deleted successfully!`);
-        listFiles(); // Refresh the list
-    }
+async function deleteFile(filename) {
+  if (!confirm(`Delete "${filename}"?`)) return;
+
+  try {
+    await fetch(`http://localhost:3000/api/files/update`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, content: '' }) // overwrite with empty
+    });
+    showMessage(`"${filename}" deleted (emptied).`);
+    listFiles();
+  } catch {
+    showMessage(`Failed to delete "${filename}"`, 'error');
+  }
 }
 
-// API functions that would connect to Node.js server
-async function saveFileToServer(filename, content) {
-    try {
-        const response = await fetch('/api/files/save', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filename, content })
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            return result;
-        } else {
-            throw new Error('Failed to save file');
-        }
-    } catch (error) {
-        console.error('Error saving file:', error);
-        throw error;
-    }
-}
-
-async function loadFileFromServer(filename) {
-    try {
-        const response = await fetch(`/api/files/load/${filename}`);
-        
-        if (response.ok) {
-            const result = await response.json();
-            return result;
-        } else {
-            throw new Error('File not found');
-        }
-    } catch (error) {
-        console.error('Error loading file:', error);
-        throw error;
-    }
-}
-
-async function updateFileOnServer(filename, content) {
-    try {
-        const response = await fetch('/api/files/update', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filename, content })
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            return result;
-        } else {
-            throw new Error('Failed to update file');
-        }
-    } catch (error) {
-        console.error('Error updating file:', error);
-        throw error;
-    }
-}
-
-async function listFilesFromServer() {
-    try {
-        const response = await fetch('/api/files/list');
-        
-        if (response.ok) {
-            const result = await response.json();
-            return result;
-        } else {
-            throw new Error('Failed to list files');
-        }
-    } catch (error) {
-        console.error('Error listing files:', error);
-        throw error;
-    }
-}
-
-// Auto-save feature (saves every 30 seconds if there's content)
-setInterval(() => {
-    if (editor.value.trim() && filenameInput.value.trim()) {
-        const filename = filenameInput.value.trim();
-        if (fileSystem[filename] && fileSystem[filename].content !== editor.value) {
-            updateFile();
-        }
-    }
-}, 30000);
-
-// Keyboard shortcuts
 editor.addEventListener('keydown', (e) => {
-    // Ctrl+S to save
-    if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        saveFile();
-    }
-    // Ctrl+N for new file
-    if (e.ctrlKey && e.key === 'n') {
-        e.preventDefault();
-        createNewFile();
-    }
-    // Ctrl+O to open/load
-    if (e.ctrlKey && e.key === 'o') {
-        e.preventDefault();
-        loadFile();
-    }
-    // Ctrl+U to update
-    if (e.ctrlKey && e.key === 'u') {
-        e.preventDefault();
-        updateFile();
-    }
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    saveFile();
+  }
+  if (e.ctrlKey && e.key === 'n') {
+    e.preventDefault();
+    createNewFile();
+  }
+  if (e.ctrlKey && e.key === 'o') {
+    e.preventDefault();
+    loadFile();
+  }
+  if (e.ctrlKey && e.key === 'u') {
+    e.preventDefault();
+    updateFile();
+  }
 });
 
-// Initialize application
+// Auto-save every 30 seconds
+setInterval(() => {
+  if (editor.value.trim() && filenameInput.value.trim()) {
+    updateFile();
+  }
+}, 30000);
+
+// Initialize
 function initializeApp() {
-    updateStats();
-    
-    // Load a demo file if it's the first visit
-    if (Object.keys(fileSystem).length === 0) {
-        fileSystem['welcome.txt'] = {
-            content: `Welcome to Word Processor!
-
-This is a sample document to get you started. Here are the features:
-
-📝 Writing Features:
-- Real-time word and character counting
-- Auto-save every 30 seconds
-- Keyboard shortcuts (Ctrl+S, Ctrl+N, Ctrl+O, Ctrl+U)
-
-💾 File Management:
-- Save documents with custom names
-- Load existing documents
-- Update existing documents
-- List all saved documents
-- Delete unwanted files
-
-🎨 Modern Interface:
-- Beautiful gradient design
-- Responsive layout
-- Smooth animations
-- User-friendly notifications
-
-🔧 Technical Features:
-- HTML5 structure
-- CSS3 styling with gradients and animations
-- JavaScript for interactivity
-- Node.js backend integration ready
-- File read/write/update operations
-
-Instructions:
-1. Type your content in the text area
-2. Enter a filename and click "Save"
-3. Use "Load" to open existing files
-4. Use "Update" to modify existing files
-5. Click "List Files" to see all saved documents
-
-Start writing your masterpiece!`,
-            lastModified: new Date().toLocaleString(),
-            size: 0
-        };
-        fileSystem['welcome.txt'].size = fileSystem['welcome.txt'].content.length;
-        localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
-    }
+  updateStats();
+  filenameInput.value = 'document.txt';
 }
 
-// Start the application
 initializeApp();
