@@ -43,31 +43,34 @@ function createNewFile() {
 function saveFile() {
     const filename = filenameInput.value.trim();
     const content = editor.value;
-    
+
     if (!filename) {
         showMessage('Please enter a filename!', 'error');
         return;
     }
-    
-    // Simulate saving to file system
-    // In real application, this would make an API call to Node.js:
-    // fetch('/api/save', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ filename, content })
-    // });
-    
+
+    // Download file to PC
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Always update (overwrite) in app's file list (localStorage)
     fileSystem[filename] = {
         content: content,
         lastModified: new Date().toLocaleString(),
         size: content.length
     };
-    
-    // Save to localStorage (simulating persistent storage)
     localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
-    
+
     lastSavedSpan.textContent = new Date().toLocaleString();
-    showMessage(`File "${filename}" saved successfully!`);
+    showMessage(`File "${filename}" saved (updated) in app and downloaded to your PC!`);
 }
 
 function loadFile() {
@@ -91,33 +94,67 @@ function loadFile() {
         updateStats();
         showMessage(`File "${filename}" loaded successfully!`);
     } else {
-        showMessage(`File "${filename}" not found!`, 'error');
+        showMessage('This file does not exist. Use "New" to create a file first.', 'error');
+        return;
     }
 }
 
+// Load file from user's PC
+document.getElementById('fileUpload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        editor.value = evt.target.result;
+        filenameInput.value = file.name;
+        updateStats();
+        showMessage(`File "${file.name}" loaded from your PC!`);
+    };
+    reader.readAsText(file);
+});
+
+// Update file (download updated content)
 function updateFile() {
     const filename = filenameInput.value.trim();
     const content = editor.value;
-    
+
     if (!filename) {
         showMessage('Please enter a filename to update!', 'error');
         return;
     }
-    
-    if (!fileSystem[filename]) {
-        showMessage(`File "${filename}" doesn't exist! Use Save to create it.`, 'error');
-        return;
-    }
-    
-    // Update existing file
-    fileSystem[filename].content = content;
-    fileSystem[filename].lastModified = new Date().toLocaleString();
-    fileSystem[filename].size = content.length;
-    
+
+    // Download updated file to PC
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Update in app's file list (localStorage)
+    fileSystem[filename] = {
+        content: content,
+        lastModified: new Date().toLocaleString(),
+        size: content.length
+    };
     localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
-    
+
     lastSavedSpan.textContent = new Date().toLocaleString();
-    showMessage(`File "${filename}" updated successfully!`);
+    showMessage(`File "${filename}" updated and downloaded to your PC!`);
+}
+
+// Delete file from app list (not from PC)
+function deleteFile(filename) {
+    if (confirm(`This will remove "${filename}" from the app list only.\n\nTo delete the file from your PC, please remove it manually from your Downloads or Desktop folder.`)) {
+        delete fileSystem[filename];
+        localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
+        showMessage(`File "${filename}" removed from app list! (Not deleted from your PC)`);
+        listFiles();
+    }
 }
 
 function listFiles() {
@@ -166,11 +203,11 @@ function updateSpecificFile(filename) {
 }
 
 function deleteFile(filename) {
-    if (confirm(`Are you sure you want to delete "${filename}"?`)) {
+    if (confirm(`This will remove "${filename}" from the app list only.\n\nTo delete the file from your PC, please remove it manually from your Downloads or Desktop folder.`)) {
         delete fileSystem[filename];
         localStorage.setItem('wordProcessorFiles', JSON.stringify(fileSystem));
-        showMessage(`File "${filename}" deleted successfully!`);
-        listFiles(); // Refresh the list
+        showMessage(`File "${filename}" removed from app list! (Not deleted from your PC)`);
+        listFiles();
     }
 }
 
