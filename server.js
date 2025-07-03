@@ -8,7 +8,7 @@ const os = require('os');
 const app = express();
 const PORT = 3000;
 
-// ✅ Save files to Desktop in "wordProcessorFiles" folder (only on your server)
+// ✅ Save files to Desktop in "wordProcessorFiles" folder
 const desktopPath = path.join(os.homedir(), 'Desktop', 'wordProcessorFiles');
 
 // ✅ Create the folder if it doesn't exist
@@ -19,6 +19,7 @@ if (!fs.existsSync(desktopPath)) {
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
+
 
 // ✅ Save file
 app.post('/api/files/save', (req, res) => {
@@ -77,17 +78,6 @@ app.get('/api/files/list', (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: '❌ Failed to list files.' });
-  }
-});
-
-// ✅ Download file (for users)
-app.get('/api/files/download/:filename', (req, res) => {
-  const filePath = path.join(desktopPath, req.params.filename);
-
-  if (fs.existsSync(filePath)) {
-    res.download(filePath);
-  } else {
-    res.status(404).json({ error: '❌ File not found for download.' });
   }
 });
 
