@@ -149,6 +149,13 @@ async function loadSpecificFile(filename) {
   await loadFile();
   fileListDiv.style.display = 'none';
 }
+function downloadFile() {
+  const blob = new Blob([editor.value], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filenameInput.value.trim() || 'document.txt';
+  a.click();
+}
 
 async function deleteFile(filename) {
   if (!confirm(`Delete "${filename}"?`)) return;
